@@ -1,0 +1,8 @@
+{
+  "module": "",
+  "dependencies": {
+    "accounting": "^0.4.1",
+    "lodash": "^4.17.20",
+    "ramda": "^0.27.1"
+  }
+}

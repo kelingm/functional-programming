@@ -12,6 +12,18 @@ function loadImageAsync(url) {
   });
 }
 
+function loadScript(url) {
+  return new Promise((resolve, reject) => {
+    let script = document.createElement('script');
+    script.src = url;
+
+    script.onload = () => resolve(script);
+    script.onerror = () => reject(new Error(`Script load error for ${url}`));
+
+    document.head.append(script);
+  });
+}
+
 function ajax(url, method = 'GET') {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -21,6 +33,8 @@ function ajax(url, method = 'GET') {
     xhr.send();
   });
 }
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // 1. Promise.all 全部resolve或有一个reject就结束
 // const promise1 = Promise.resolve(3);

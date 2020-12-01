@@ -36,6 +36,27 @@ function ajax(url, method = 'GET') {
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+//为 HTTP 错误创建一个自定义类用于区分 HTTP 错误和其他类型错误
+class HttpError extends Error {
+  // (1)
+  constructor(response) {
+    super(`${response.status} for ${response.url}`);
+    this.name = 'HttpError';
+    this.response = response;
+  }
+}
+
+function loadJson(url) {
+  // (2)
+  return fetch(url).then(response => {
+    if (response.status == 200) {
+      return response.json();
+    } else {
+      throw new HttpError(response);
+    }
+  });
+}
+
 // 1. Promise.all 全部resolve或有一个reject就结束
 // const promise1 = Promise.resolve(3);
 // const promise2 = 42;
@@ -49,122 +70,72 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 //   })
 //   .catch(e => console.log(e));
 // error
+let names = ['iliakan', 'remy', 'jeresig'];
 
-// 实现一个promise
-const PENDING = 'pending';
-const FULFILLED = 'fullfilled';
-const REJECTED = 'rejected';
+let requests = names.map(name => fetch(`https://api.github.com/users/${name}`));
 
-function MyPromise(executor) {
-  this.value = null;
-  this.error = null;
-  this.status = PENDING;
-  this.onFulfilled = []; // 支持多个回调绑定
-  this.onRejected = [];
-  const resolve = value => {
-    if (this.status !== PENDING) return;
-    setTimeout(() => {
-      // 延时执行，模拟微任务，因为在执行resolve的时候，回调函数还未绑定，需要等待 then方法绑定回调函数
-      this.status = FULFILLED;
-      this.value = value;
-      let onFulfilled;
-      while ((onFulfilled = this.onFulfilled.shift())) {
-        onFulfilled && onFulfilled(value);
-      }
-      return value;
-    });
-  };
-  const reject = error => {
-    if (this.status !== PENDING) return;
-    setTimeout(() => {
-      this.status = REJECTED;
+Promise.all(requests)
+  // 将响应数组映射（map）到 response.json() 数组中以读取它们的内容
+  .then(responses => Promise.all(responses.map(r => r.json())))
+  // 所有 JSON 结果都被解析："users" 是它们的数组
+  .then(users => console.log(users));
 
-      this.error = error;
-      let onRejected;
-      while ((onRejected = this.onRejected.shift())) {
-        onRejected && onRejected(error);
-      }
-      return error;
-    });
-  };
-  executor(resolve, reject);
-}
-MyPromise.prototype.then = function (onFulfilled, onRejected) {
-  if (this.status === PENDING) {
-    // 返回一个新的promise来支持链式调用
-    return (bridgePromise = new MyPromise((resolve, reject) => {
-      this.onFulfilled.push(value => {
-        const result = (typeof onFulfilled === 'function' ? onFulfilled : value => value)(value);
-        resolvePromise(result, resolve, reject);
-      });
-      this.onRejected.push(value => {
-        const result = (typeof onRejected === 'function'
-          ? onRejected
-          : error => {
-              throw error;
-            })(value);
-        reject(result);
-      });
-    }));
-  } else if (this.status === FULFILLED) {
-    onFulfilled(this.value);
-  } else {
-    onRejected(this.error);
-  }
-};
-
-MyPromise.prototype.catch = function (onRejected) {
-  return this.then(null, onRejected);
-};
-
-function resolvePromise(x, resolve, reject) {
-  // 如果返回一个promise, 继续递归调用处理这个promise，直到最后的值非promise
-  if (x instanceof MyPromise) {
-    if (x.status === PENDING) {
-      x.then(value => {
-        resolvePromise(value, resolve, reject);
-      }, reject);
-    } else {
-      x.then(resolve, reject);
+// 2. Promise.allSettled
+let urls = [
+  'https://api.github.com/users/iliakan',
+  'https://api.github.com/users/remy',
+  'https://no-such-url',
+];
+Promise.allSettled(urls.map(url => fetch(url))).then(results => {
+  results.forEach(result => {
+    if (result.status == 'fulfilled') {
+      alert(`${urls[num]}: ${result.value.status}`);
     }
-  } else {
-    resolve(x);
+    if (result.status == 'rejected') {
+      alert(`${urls[num]}: ${result.reason}`);
+    }
+  });
+});
+
+////////////////////////////////////////
+
+// promisify
+// callback(err, res1, res2, ...)
+const promisify = (fn, manyArgs = false) => {
+  return (...args) => {
+    return new Promise((resolve, reject) => {
+      fn.call(this, ...args, (err, ...data) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(manyArgs ? data : data[0]);
+        }
+      });
+    });
+  };
+};
+// function loadScript(src, callback) {
+//   let script = document.createElement('script');
+//   script.src = src;
+
+//   script.onload = () => callback(null, script);
+//   script.onerror = () => callback(new Error(`Script load error for ${src}`));
+
+//   document.head.append(script);
+// }
+// const loadScriptPromise = promisify(loadScript);
+// loadScriptPromise('path/script.js').then(
+//   data => console.log(data),
+//   err => console.log('error: ' + err),
+// );
+
+class Thenable {
+  constructor(num) {
+    this.num = num;
+  }
+  then(resolve, reject) {
+    alert(resolve);
+    // 1000ms 后使用 this.num*2 进行 resolve
+    setTimeout(() => resolve(this.num * 2), 1000); // (*)
   }
 }
-
-// var promise4 = new MyPromise((resolve, reject) => {
-//   resolve('ok');
-// })
-//   .then(
-//     () => {
-//       console.log('suc');
-//       // return 2;
-//       return new MyPromise((resolve, reject) => reject('ero'));
-//     },
-//     () => console.log('fail'),
-//   )
-//   .then(
-//     v => console.log('eee' + v),
-//     // error => console.log('fail', error),
-//   )
-//   .catch(e => console.log('error!!' + e));
-var promise3 = new Promise((resolve, reject) => {
-  resolve('ok');
-});
-// promise3.then(
-//   () => console.log('succ'),
-//   () => console.log('fail'),
-// );
-// setTimeout(() => {
-//   promise3.then(
-//     () => console.log('succ1'),
-//     () => console.log('fail'),
-//   );
-// });
-var x = promise3.then(() => {
-  console.log(22);
-  return 22;
-});
-setTimeout(() => {
-  console.log({ x, promise3 });
-}, 1);

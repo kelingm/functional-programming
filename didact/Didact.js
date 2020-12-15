@@ -181,7 +181,6 @@ function reconcileChildren(instance, element) {
   const childInstances = instance.childInstances;
   const childElements = element.props.children || [];
   const count = Math.min(childInstances.length, childElements.length); // 最小值
-  console.log({ count });
   const newChildInstances = [];
 
   let i = 0;
@@ -192,59 +191,62 @@ function reconcileChildren(instance, element) {
     const oldElement = childInstance.element;
     const childElement = childElements[i];
     if (oldElement.key === childElement.key) {
-      if (oldElement.type === childElement.type) {
-        // 可以复用
-        const newChildInstance = reconcile(parentDom, childInstance, childElement);
-        newChildInstances.push(newChildInstance);
-      } else {
-        // type不同，删除原来的元素
-        // todo
-      }
+      // if (oldElement.type === childElement.type) {
+      //   // 可以复用
+      //   const newChildInstance = reconcile(parentDom, childInstance, childElement);
+      //   newChildInstances.push(newChildInstance);
+      // } else {
+      //   // type不同，删除原来的元素
+      //   // todo
+      // }
+      const newChildInstance = reconcile(parentDom, childInstance, childElement);
+      newChildInstances.push(newChildInstance);
     } else {
       // key 不同，跳出第一轮遍历
       break;
     }
   }
-  let lastIndex = i - 1;
+
   // 将剩下的childInstances按ky进行map
   const existingChildren = {};
-  for (; i < childInstances.length; i++) {
-    existingChildren[childInstances[i].element.key] = {
-      instance: childInstances[i],
-      index: i,
+  for (let j = i; j < childInstances.length; j++) {
+    existingChildren[childInstances[j].element.key] = {
+      instance: childInstances[j],
+      index: j,
     };
   }
-
-  for (let i = lastIndex + 1; i < childElements.length; i++) {
+  let lastIndex = Math.max(i - 1, 0);
+  for (; i < childElements.length; i++) {
     const childElement = childElements[i];
     const item = existingChildren[childElement.key];
     if (item) {
       const mountIndex = item.index;
       const newChildInstance = reconcile(parentDom, item.instance, childElement);
 
-      if (lastIndex < mountIndex) {
-        // 不动
-        newChildInstances.push(newChildInstance);
-      } else {
-        // 移动到最后
-        parentDom.appendChild(newChildInstance.dom);
-        // Node.appendChild() 方法将一个节点附加到指定父节点的子节点列表的末尾处。
-        // 如果将被插入的节点已经存在于当前文档的文档树中，
-        // 那么 appendChild() 只会将它从原先的位置移动到新的位置（不需要事先移除要移动的节点）。
+      if (mountIndex < lastIndex) {
+        // 右移，否则不动、
+        if (childInstances[lastIndex + 1]) {
+          parentDom.insertBefore(newChildInstance.dom, childInstances[lastIndex + 1].dom);
+        } else {
+          parentDom.appendChild(newChildInstance.dom);
+        }
+        // parentDom.insertBefore(newChildInstance.dom, childInstances[lastIndex].dom.nextSibling);
       }
+      newChildInstances.push(newChildInstance);
       lastIndex = Math.max(lastIndex, mountIndex);
+      delete existingChildren[childElement.key];
     } else {
       // 新增
+
       const newChildInstance = instantiate(childElement);
       if (childInstances[lastIndex + 1]) {
         parentDom.insertBefore(newChildInstance.dom, childInstances[lastIndex + 1].dom);
       } else {
-        // 最后
         parentDom.appendChild(newChildInstance.dom);
       }
+      // parentDom.insertBefore(newChildInstance.dom, childInstances[lastIndex].dom.nextSibling);
       newChildInstances.push(newChildInstance);
     }
-    delete existingChildren[childElement.key];
   }
   // 遍历原来未处理的元素， 删除
   Object.values(existingChildren)
@@ -254,6 +256,10 @@ function reconcileChildren(instance, element) {
     });
   return newChildInstances.filter(instance => instance != null);
 }
+
+// function insertAfter(parentDom, dom) {
+//   parentDom.insertBefore(dom, dom.nextSibling);
+// }
 
 // 创建instance对象
 // 新建虚拟dom组件  instance:{dom, element, childInstance, component}

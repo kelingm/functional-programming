@@ -358,9 +358,6 @@ function reconcileChildren(instance, element) {
   var childElements = element.props.children || [];
   var count = Math.min(childInstances.length, childElements.length); // 最小值
 
-  console.log({
-    count: count
-  });
   var newChildInstances = [];
   var i = 0; // 第一轮遍历
 
@@ -370,32 +367,36 @@ function reconcileChildren(instance, element) {
     var childElement = childElements[i];
 
     if (oldElement.key === childElement.key) {
-      if (oldElement.type === childElement.type) {
-        // 可以复用
-        var newChildInstance = reconcile(parentDom, childInstance, childElement);
-        newChildInstances.push(newChildInstance);
-      } else {// type不同，删除原来的元素 todo
-      }
+      // if (oldElement.type === childElement.type) {
+      //   // 可以复用
+      //   const newChildInstance = reconcile(parentDom, childInstance, childElement);
+      //   newChildInstances.push(newChildInstance);
+      // } else {
+      //   // type不同，删除原来的元素
+      //   // todo
+      // }
+      var newChildInstance = reconcile(parentDom, childInstance, childElement);
+      newChildInstances.push(newChildInstance);
     } else {
       // key 不同，跳出第一轮遍历
-      console.log('break');
       break;
     }
-  }
+  } // 将剩下的childInstances按ky进行map
 
-  var lastIndex = i - 1; // 将剩下的childInstances按ky进行map
 
   var existingChildren = {};
 
-  for (; i < childInstances.length; i++) {
-    existingChildren[childInstances[i].element.key] = {
-      instance: childInstances[i],
-      index: i
+  for (var j = i; j < childInstances.length; j++) {
+    existingChildren[childInstances[j].element.key] = {
+      instance: childInstances[j],
+      index: j
     };
   }
 
-  for (var _i = lastIndex + 1; _i < childElements.length; _i++) {
-    var _childElement = childElements[_i];
+  var lastIndex = Math.max(i - 1, 0);
+
+  for (; i < childElements.length; i++) {
+    var _childElement = childElements[i];
     var item = existingChildren[_childElement.key];
 
     if (item) {
@@ -403,17 +404,19 @@ function reconcileChildren(instance, element) {
 
       var _newChildInstance = reconcile(parentDom, item.instance, _childElement);
 
-      if (lastIndex < mountIndex) {
-        // 不动
-        newChildInstances.push(_newChildInstance);
-      } else {
-        // 移动到最后
-        parentDom.appendChild(_newChildInstance.dom); // Node.appendChild() 方法将一个节点附加到指定父节点的子节点列表的末尾处。
-        // 如果将被插入的节点已经存在于当前文档的文档树中，
-        // 那么 appendChild() 只会将它从原先的位置移动到新的位置（不需要事先移除要移动的节点）。
+      if (mountIndex < lastIndex) {
+        // 右移，否则不动、
+        if (childInstances[lastIndex + 1]) {
+          parentDom.insertBefore(_newChildInstance.dom, childInstances[lastIndex + 1].dom);
+        } else {
+          parentDom.appendChild(_newChildInstance.dom);
+        } // parentDom.insertBefore(newChildInstance.dom, childInstances[lastIndex].dom.nextSibling);
+
       }
 
+      newChildInstances.push(_newChildInstance);
       lastIndex = Math.max(lastIndex, mountIndex);
+      delete existingChildren[_childElement.key];
     } else {
       // 新增
       var _newChildInstance2 = instantiate(_childElement);
@@ -421,14 +424,12 @@ function reconcileChildren(instance, element) {
       if (childInstances[lastIndex + 1]) {
         parentDom.insertBefore(_newChildInstance2.dom, childInstances[lastIndex + 1].dom);
       } else {
-        // 最后
         parentDom.appendChild(_newChildInstance2.dom);
-      }
+      } // parentDom.insertBefore(newChildInstance.dom, childInstances[lastIndex].dom.nextSibling);
+
 
       newChildInstances.push(_newChildInstance2);
     }
-
-    delete existingChildren[_childElement.key];
   } // 遍历原来未处理的元素， 删除
 
 
@@ -440,7 +441,10 @@ function reconcileChildren(instance, element) {
   return newChildInstances.filter(function (instance) {
     return instance != null;
   });
-} // 创建instance对象
+} // function insertAfter(parentDom, dom) {
+//   parentDom.insertBefore(dom, dom.nextSibling);
+// }
+// 创建instance对象
 // 新建虚拟dom组件  instance:{dom, element, childInstance, component}
 // 新建虚拟dom元素 instance: {dom, element, childInstances}
 
@@ -614,32 +618,16 @@ function _isNativeReflectConstruct() { if (typeof Reflect === "undefined" || !Re
 
 function _getPrototypeOf(o) { _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf : function _getPrototypeOf(o) { return o.__proto__ || Object.getPrototypeOf(o); }; return _getPrototypeOf(o); }
 
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-// import React, { ReactDOM } from 'react';
+// import React from 'react';
 // import ReactDOM from 'react-dom';
 var Hello = function Hello(_ref) {
   var name = _ref.name,
       children = _ref.children;
   return _Didact.Didact.createElement("div", null, "hello world ", name, name > 2 && 'hah', name < 5 && 'eee', children);
-};
-
-var rootDom = document.getElementById('root'); // DidactDOM.render(<Welcome />, rootDom);
-// ReactDom.render(App, root);
-// 1.render方法
+}; // 1.render方法
 // - jsx和vdom： babel调用createElement(设置babel)
 // 2. 组件
-// function tick() {
-//   const time = new Date().toLocaleTimeString();
-//   const clockElement = <h1>{time}</h1>;
-//   DidactDOM.render(clockElement, rootDom);
-// }
-// tick();
-// setInterval(tick, 1000);
 
-var randomLikes = function randomLikes() {
-  return Math.ceil(Math.random() * 100);
-};
 
 var App = /*#__PURE__*/function (_Didact$Component) {
   _inherits(App, _Didact$Component);
@@ -652,21 +640,6 @@ var App = /*#__PURE__*/function (_Didact$Component) {
     _classCallCheck(this, App);
 
     _this = _super.call(this, props);
-
-    _defineProperty(_assertThisInitialized(_this), "handleClick", function (story) {
-      var a = [].concat(_this.state.stories);
-      a.splice(a.findIndex(function (item) {
-        return item.name === story.name;
-      }), 1);
-      console.log({
-        a: a
-      });
-
-      _this.setState({
-        stories: a
-      });
-    });
-
     _this.state = {
       stories: [1, 2, 3, 4]
     };
@@ -683,7 +656,7 @@ var App = /*#__PURE__*/function (_Didact$Component) {
           key: t,
           onClick: function onClick() {
             _this2.setState({
-              stories: [1, 3, 4, 5, 6]
+              stories: [3, 2, 3, 4]
             });
           }
         }, t);
@@ -693,18 +666,6 @@ var App = /*#__PURE__*/function (_Didact$Component) {
 
   return App;
 }(_Didact.Didact.Component);
-
-var StoryElement = function StoryElement(_ref2) {
-  var story = _ref2.story,
-      handleClick = _ref2.handleClick;
-  return _Didact.Didact.createElement("li", null, _Didact.Didact.createElement("button", {
-    onClick: function onClick(e) {
-      return handleClick(story);
-    }
-  }, story.likes, _Didact.Didact.createElement("b", null, "\u2764\uFE0F")), _Didact.Didact.createElement("a", {
-    href: story.url
-  }, story.name));
-};
 
 _Didact.DidactDOM.render(_Didact.Didact.createElement(App, null), document.getElementById('root'));
 },{"./Didact":"Didact.js"}],"node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
@@ -735,7 +696,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "60686" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "60191" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};

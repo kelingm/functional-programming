@@ -1,10 +1,11 @@
 {
   "presets": ["@babel/preset-react", "env"],
   "plugins": [
-      ["@babel/plugin-transform-react-jsx", {
-          "pragma": "React.createElement"
-      }],
-      ["@babel/plugin-proposal-object-rest-spread", { "loose": true, "useBuiltIns": true }],
-      ["@babel/plugin-proposal-class-properties"]
+    [
+      "@babel/plugin-transform-react-jsx",
+      {
+        "pragma": "Didact.createElement"
+      }
     ]
+  ]
 }

@@ -58,13 +58,18 @@ const Didact = {
 
 // Didact元素 {type,key, props}
 // JSX babel自动调用 生成Didact元素
-function createElement(type, config = {}, ...children) {
+// children: [[{}, {}, {}]] (当使用map的时候)
+// 或者 [{}, {}]
+function createElement(type, config = {}, ...args) {
   const { key, ...props } = { key: '', ...config };
   // const newChildren = children.map();
   // 排除undefined和null、false
   //<div>hello {name}</div> 会有两个child， {name}可能为undefined
   // false: {count && <div>hello</div>}
-  props.children = (children || [])
+  const hasChildren = args.length > 0;
+  const rawChildren = hasChildren ? [].concat(...args) : []; // concat可以合并数组或值
+
+  props.children = rawChildren
     .filter(c => c != null && c !== false)
     .map(c => (c instanceof Object ? c : createTextElement(c)));
   return {
@@ -140,7 +145,7 @@ function reconcile(parentDom, instance, element) {
       // 更新组件props
       const component = instance.component;
       component.props = element.props;
-      // 重新render组件
+      // 重新render组件,获取vdom
       const childElement = component.render();
       const oldChildInstance = instance.childInstance;
       const childInstance = reconcile(parentDom, oldChildInstance, childElement); // 对比-剩下-孩子
@@ -157,20 +162,99 @@ function reconcile(parentDom, instance, element) {
   }
 }
 
+// function reconcileChildren(instance, element) {
+//   const parentDom = instance.dom;
+//   const childInstances = instance.childInstances;
+//   const childElements = element.props.children || [];
+//   const count = Math.max(childInstances.length, childElements.length);
+//   const newChildInstances = [];
+
+//   for (let i = 0; i < count; i++) {
+//     // 有可能新增或减少子元素
+//     const newChildInstance = reconcile(parentDom, childInstances[i], childElements[i]);
+//     newChildInstances.push(newChildInstance);
+//   }
+//   return newChildInstances.filter(instance => instance != null); // 过滤掉删除的元素
+// }
 function reconcileChildren(instance, element) {
   const parentDom = instance.dom;
   const childInstances = instance.childInstances;
   const childElements = element.props.children || [];
-  const count = Math.max(childInstances.length, childElements.length);
+  const count = Math.min(childInstances.length, childElements.length); // 最小值
+  console.log({ count });
   const newChildInstances = [];
 
-  for (let i = 0; i < count; i++) {
-    // 有可能新增或减少子元素
-    const newChildInstance = reconcile(parentDom, childInstances[i], childElements[i]);
-    newChildInstances.push(newChildInstance);
+  let i = 0;
+
+  // 第一轮遍历
+  for (; i < count; i++) {
+    const childInstance = childInstances[i];
+    const oldElement = childInstance.element;
+    const childElement = childElements[i];
+    if (oldElement.key === childElement.key) {
+      if (oldElement.type === childElement.type) {
+        // 可以复用
+        const newChildInstance = reconcile(parentDom, childInstance, childElement);
+        newChildInstances.push(newChildInstance);
+      } else {
+        // type不同，删除原来的元素
+        // todo
+      }
+    } else {
+      // key 不同，跳出第一轮遍历
+      break;
+    }
   }
-  return newChildInstances.filter(instance => instance != null); // <---- 2
+  let lastIndex = i - 1;
+  // 将剩下的childInstances按ky进行map
+  const existingChildren = {};
+  for (; i < childInstances.length; i++) {
+    existingChildren[childInstances[i].element.key] = {
+      instance: childInstances[i],
+      index: i,
+    };
+  }
+
+  for (let i = lastIndex + 1; i < childElements.length; i++) {
+    const childElement = childElements[i];
+    const item = existingChildren[childElement.key];
+    if (item) {
+      const mountIndex = item.index;
+      const newChildInstance = reconcile(parentDom, item.instance, childElement);
+
+      if (lastIndex < mountIndex) {
+        // 不动
+        newChildInstances.push(newChildInstance);
+      } else {
+        // 移动到最后
+        parentDom.appendChild(newChildInstance.dom);
+        // Node.appendChild() 方法将一个节点附加到指定父节点的子节点列表的末尾处。
+        // 如果将被插入的节点已经存在于当前文档的文档树中，
+        // 那么 appendChild() 只会将它从原先的位置移动到新的位置（不需要事先移除要移动的节点）。
+      }
+      lastIndex = Math.max(lastIndex, mountIndex);
+    } else {
+      // 新增
+      const newChildInstance = instantiate(childElement);
+      if (childInstances[lastIndex + 1]) {
+        parentDom.insertBefore(newChildInstance.dom, childInstances[lastIndex + 1].dom);
+      } else {
+        // 最后
+        parentDom.appendChild(newChildInstance.dom);
+      }
+      newChildInstances.push(newChildInstance);
+    }
+    delete existingChildren[childElement.key];
+  }
+  // 遍历原来未处理的元素， 删除
+  Object.values(existingChildren)
+    .map(item => item.instance)
+    .forEach(instance => {
+      parentDom.removeChild(instance.dom);
+    });
+  return newChildInstances.filter(instance => instance != null);
 }
+
 // 创建instance对象
 // 新建虚拟dom组件  instance:{dom, element, childInstance, component}
 // 新建虚拟dom元素 instance: {dom, element, childInstances}
@@ -182,12 +266,12 @@ function instantiate(element) {
 
     const component = createComponent(element, instance); // 组件实例
     const childElement = component.render(); // 调用组件render，获得 组件 element
-    const childInstance = instantiate(childElement); // 组件内部只有一个子元素
+    const childInstance = instantiate(childElement);
     const dom = childInstance.dom;
     Object.assign(instance, {
       dom, // 组件dom
       element, // jsx对象
-      childInstance, // 组件instance
+      childInstance, // 组件render后的element instance, 没有childInstances
       component, // 组件实例
     });
     return instance;
@@ -196,6 +280,7 @@ function instantiate(element) {
   const dom = type === TEXT_ELEMENT ? document.createTextNode('') : document.createElement(type);
 
   updateDomProperties(dom, [], props);
+
   const childInstances = (props.children || []).map(instantiate);
   const childDoms = childInstances.map(childInstance => childInstance.dom);
   childDoms.forEach(child => dom.appendChild(child));
@@ -212,9 +297,13 @@ function updateDomProperties(dom, prevProps, nextProps) {
     if (!key in nextProps) {
       removeAttribute({ key, value: prevProps[key], dom });
     }
+    if (isEvent(key)) {
+      removeAttribute({ key, value: prevProps[key], dom });
+    }
   }
   // 如果属性改变， 设置新的属性
   for (let key in nextProps) {
+    // console.log({ key });
     if (nextProps[key] !== prevProps[key]) {
       setAttribute({ key, value: nextProps[key], dom });
     }
@@ -224,6 +313,7 @@ function updateDomProperties(dom, prevProps, nextProps) {
 const isEvent = name => name.startsWith('on');
 
 function removeAttribute({ key, value, dom }) {
+  // todo
   if (isEvent(key)) {
     const event = key.slice(2).toLocaleLowerCase();
     dom.removeEventListener(event, value);
@@ -256,6 +346,7 @@ function setAttribute({ key, value, dom }) {
 function createComponent(element, internalInstance) {
   const { type, props } = element;
   let component;
+
   if (type.prototype.render) {
     // 类组件
     component = new type(props);

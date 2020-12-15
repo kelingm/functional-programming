@@ -1,4 +1,4 @@
-import { Didact, DidactDOM } from './Didact';
+import { Didact, DidactDOM } from './Didact4';
 // import React from 'react';
 // import ReactDOM from 'react-dom';
 
@@ -32,7 +32,7 @@ class App extends Didact.Component {
           <button
             key={t}
             onClick={() => {
-              this.setState({ stories: [3, 2, 3, 4] });
+              this.setState({ stories: [3, 4] });
             }}
           >
             {t}

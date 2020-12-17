@@ -1,5 +1,5 @@
 const DidactDOM = {
-  render(node, container) {},
+  render(element, container) {},
 };
 
 export default DidactDOM;

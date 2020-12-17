@@ -418,6 +418,7 @@ function cloneChildFibers(parentFiber) {
   }
 }
 // 当wipFiber没有新的孩子，或者我们已经完成了所有孩子的工作时，运行completeWork
+// 将有effectTag的fiber挂载到父fiber的effects的末尾
 function completeWork(fiber) {
   // 更新class component fiber的引用
   if (fiber.tag === CLASS_COMPONENT) {

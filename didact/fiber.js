@@ -1,5 +1,4 @@
-const TEXT_ELEMENT = 'TEXT ELEMENT'; // 类型
-const ENOUGH_TIME = 1;
+import { initializeUpdateQueue } from './updateQueue';
 
 export const BlockingRoot = 1;
 
@@ -70,7 +69,7 @@ function FiberNode(tag, pendingProps, key) {
   // 指向该fiber在另一次更新时对应的fiber
   this.alternate = null;
 }
-function FiberRootNode(containerInfo, tag, hydrate) {
+function FiberRootNode(containerInfo, tag) {
   this.tag = tag;
   this.current = null;
   this.containerInfo = containerInfo;
@@ -81,7 +80,7 @@ export const createFiber = function (tag, pendingProps, key) {
 };
 
 export function createFiberRoot(containerInfo, tag) {
-  const root = new FiberRootNode(containerInfo, tag, hydrate);
+  const root = new FiberRootNode(containerInfo, tag);
 
   // 创建rootFiber（container， container的stateNode指向了root（FiberRootNode))
   const uninitializedFiber = createFiber(HostRoot, null, null);

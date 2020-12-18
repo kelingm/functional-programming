@@ -1,14 +1,16 @@
+import { createFiber } from '../fiber';
+// import { FunctionComponent, ClassComponent, HostRoot, HostComponent,NoEffect, Placement, Update, PlacementAndUpdate, Deletion  } from './constants';
 const ENOUGH_TIME = 1;
 // Fiber tags
 export const FunctionComponent = 0;
 export const ClassComponent = 1;
 // export const IndeterminateComponent = 2; // Before we know whether it is function or class
-// export const HostRoot = 3; // Root of a host tree. Could be nested inside another node.
+export const HostRoot = 3; // Root of a host tree. Could be nested inside another node.
 // export const HostPortal = 4; // A subtree. Could be an entry point to a different renderer.
 export const HostComponent = 5;
 
 // effect tags
-const NoEffect = /*                        */ 0b00000000000000;
+export const NoEffect = /*                 */ 0b00000000000000;
 // DOM需要插入到页面中
 export const Placement = /*                */ 0b00000000000010;
 // DOM需要更新
@@ -21,24 +23,23 @@ export const Deletion = /*                 */ 0b00000000001000;
 let workInProgress = null; // 当前已创建的workInProgress fiber
 let workInProgressRoot = null;
 
-function scheduleUpdateOnFiber(fiber) {
+export function scheduleUpdateOnFiber(fiber) {
   const root = markUpdateLaneFromFiberToRoot(fiber);
+
   performWorkOnRoot(root);
-}
-// 每一个react element都将对应一个fiber结构，每一个fiber结构都对应一个单元的工作。
-function workLoop() {
-  while (workInProgress !== null) {
-    performUnitOfWork(workInProgress);
-  }
-  workInProgressRoot = null;
 }
 
 function performWorkOnRoot(root) {
+  if (root !== workInProgressRoot) {
+    root.finishedWork = null;
+    workInProgressRoot = root;
+    workInProgress = createWorkInProgress(root.current, null);
+  }
   workLoop();
   commitRoot(root);
 }
 // 从fiber到root
-function markUpdateLaneFromFiberToRoot() {
+function markUpdateLaneFromFiberToRoot(fiber) {
   // Walk the parent path to the root and update the child expiration time.
   let node = fiber.return;
   let root = null;
@@ -58,6 +59,14 @@ function markUpdateLaneFromFiberToRoot() {
   return root;
 }
 
+// 每一个react element都将对应一个fiber结构，每一个fiber结构都对应一个单元的工作。
+function workLoop() {
+  while (workInProgress !== null) {
+    performUnitOfWork(workInProgress);
+  }
+  workInProgressRoot = null;
+}
+
 // performUnitOfWork的工作可以分为两部分：“递”和“归”
 // 深度优先遍历， beginWork -> completeWork
 // 1.“递”阶段
@@ -75,7 +84,7 @@ function markUpdateLaneFromFiberToRoot() {
 function performUnitOfWork(unitOfWork) {
   const current = unitOfWork.alternate;
   let next;
-  next = beginWork(current, unitOfWork); //
+  next = beginWork(current, unitOfWork); // 处理当前fiber，并返回下一个要处理的fiber
   unitOfWork.memoizedProps = unitOfWork.pendingProps;
   if (next === null) {
     // If this doesn't spawn new work, complete the current work.
@@ -98,6 +107,7 @@ function performUnitOfWork(unitOfWork) {
 // 2. current !== null: update, 在满足一定条件时可以复用current节点, 如果不能复用，还是会走入创建子Fiber（mount）的流程里
 function beginWork(current, workInProgress) {
   // update
+  // 判断是否可以复用
   if (current !== null) {
     const oldProps = current.memoizedProps;
     const newProps = workInProgress.pendingProps;
@@ -115,13 +125,24 @@ function beginWork(current, workInProgress) {
     case HostComponent:
       return updateHostComponent(current, workInProgress);
     case ClassComponent:
-      const Component = workInProgress.type;
-      const resolvedProps = workInProgress.pendingProps;
-      return updateClassComponent(current, workInProgress, Component, resolvedProps);
+      // const Component = workInProgress.type;
+      // const resolvedProps = workInProgress.pendingProps;
+      return updateClassComponent(
+        current,
+        workInProgress,
+        workInProgress.type,
+        workInProgress.pendingProps,
+      );
+
     case FunctionComponent:
-      const Component = workInProgress.type;
-      const resolvedProps = workInProgress.pendingProps;
-      return updateFunctionComponent(current, workInProgress, Component, resolvedProps);
+      // const Component = workInProgress.type;
+      // const resolvedProps = workInProgress.pendingProps;
+      return updateFunctionComponent(
+        current,
+        workInProgress,
+        workInProgress.type,
+        workInProgress.pendingProps,
+      );
   }
 }
 
@@ -597,3 +618,72 @@ function ChildReconciler(shouldTrackSideEffects) {
 export const reconcileChildFibers = ChildReconciler(true);
 // 生成新的Fiber节点
 export const mountChildFibers = ChildReconciler(false);
+
+function commitRoot(root) {}
+
+// completeUnitOfWork: 会根据生成的fiber创建对应的dom，挂载到fiber.stateNode
+function completeUnitOfWork() {
+  let completedWork = unitOfWork;
+  do {
+    // The current, flushed, state of this fiber is the alternate. Ideally
+    // nothing should rely on this, but relying on it here means that we don't
+    // need an additional field on the work in progress.
+    var current = completedWork.alternate;
+    var returnFiber = completedWork.return; // Check if the work completed or if something threw.
+
+    const next = completeWork(current, completedWork, renderExpirationTime$1);
+    if (next !== null) {
+      // Completing this fiber spawned new work. Work on that next.
+      workInProgress = next;
+      return;
+    }
+
+    var siblingFiber = completedWork.sibling;
+
+    if (siblingFiber !== null) {
+      // If there is more work to do in this returnFiber, do that next.
+      workInProgress = siblingFiber;
+      return;
+    } // Otherwise, return to the parent
+
+    completedWork = returnFiber; // Update the next thing we're working on in case something throws.
+
+    workInProgress = completedWork;
+  } while (completedWork !== null); // We've reached the root.
+}
+
+function completeWork(current, workInProgress) {
+  var newProps = workInProgress.pendingProps;
+
+  switch (workInProgress.tag) {
+    case ClassComponent:
+    case FunctionComponent:
+      return null;
+    case HostRoot: {
+      updateHostContainer(workInProgress);
+      return null;
+    }
+
+    case HostComponent: {
+      var rootContainerInstance = getRootHostContainer();
+      var type = workInProgress.type;
+
+      if (current !== null && workInProgress.stateNode != null) {
+        updateHostComponent$1(current, workInProgress, type, newProps, rootContainerInstance);
+      } else {
+        var instance = createInstance(
+          type,
+          newProps,
+          rootContainerInstance,
+          currentHostContext,
+          workInProgress,
+        );
+        appendAllChildren(instance, workInProgress, false, false); // This needs to be set before we mount Flare event listeners
+
+        workInProgress.stateNode = instance;
+      }
+
+      return null;
+    }
+  }
+}

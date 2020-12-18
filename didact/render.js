@@ -1,18 +1,6 @@
-import { initializeUpdateQueue, enqueueUpdate, createUpdate } from './updateQueue';
-import { createFiber, createFiberRoot } from './fiber';
-import { scheduleUpdateOnFiber } from './tmp/reconcile';
-
-export const LegacyRoot = 0;
-export const BlockingRoot = 1;
-const randomKey = Math.random().toString(36).slice(2);
-
-const DidactDOM = {
-  render(element, container) {
-    return legacyRenderSubtreeIntoContainer(null, element, container);
-  },
-};
-
-function legacyRenderSubtreeIntoContainer(parentComponent, children, container) {
+import { enqueueUpdate } from './updateQueue';
+import { scheduleUpdateOnFiber } from './reconciler';
+function render(element, container) {
   // 创建update
   const update = createUpdate();
   // update.payload为需要挂载在根节点的组件
@@ -28,13 +16,8 @@ function legacyRenderSubtreeIntoContainer(parentComponent, children, container) 
   scheduleUpdateOnFiber(current);
 }
 
-// container._reactRootContainer._internalRoot = fiberRoot
-// fiberRoot.current = rootFiber
-// rootFiber.stateNode = fiberRoot
 function ReactDOMBlockingRoot(container, tag) {
   const root = createFiberRoot(container, tag);
   root.containerInfo['__reactContainer$' + randomKey] = root.current;
   this._internalRoot = root;
 }
-
-export default DidactDOM;

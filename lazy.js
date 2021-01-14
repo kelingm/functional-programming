@@ -1,4 +1,5 @@
 // https://github.com/dtao/lazy.js/
+const { add } = require('lodash');
 var _ = require('lodash');
 var users = [
   { user: 'barney', age: 36 },

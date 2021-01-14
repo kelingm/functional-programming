@@ -1,6 +1,6 @@
 import { initializeUpdateQueue, enqueueUpdate, createUpdate } from './updateQueue';
 import { createFiber, createFiberRoot } from './fiber';
-import { scheduleUpdateOnFiber } from './tmp/reconcile';
+import { scheduleUpdateOnFiber } from './reconciler';
 
 export const LegacyRoot = 0;
 export const BlockingRoot = 1;

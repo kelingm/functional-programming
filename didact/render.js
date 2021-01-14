@@ -1,5 +1,6 @@
 import { enqueueUpdate } from './updateQueue';
 import { scheduleUpdateOnFiber } from './reconciler';
+import { createFiberRoot } from './fiber';
 function render(element, container) {
   // 创建update
   const update = createUpdate();

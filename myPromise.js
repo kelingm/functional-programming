@@ -1,5 +1,5 @@
 const PENDING = 'pending';
-const FULFILLED = 'fullfilled';
+const FULFILLED = 'fulfilled';
 const REJECTED = 'rejected';
 class MyPromise {
   status = PENDING;

@@ -93,3 +93,35 @@ export function createFiberRoot(containerInfo, tag) {
   initializeUpdateQueue(uninitializedFiber);
   return root;
 }
+
+export function createFiberFromElement(element) {
+  const type = element.type;
+  const key = element.key;
+  const pendingProps = element.props;
+  const fiber = createFiberFromTypeAndProps(type, key, pendingProps);
+  return fiber;
+}
+
+export function createFiberFromText(content) {
+  const fiber = createFiber(HostText, content, null);
+  return fiber;
+}
+
+// 每个React元素都有一个相应的fiber node。
+// 与React元素不同，每次渲染过程，不会再重新创建fiber。这些可变的数据包含组件state和DOM。
+export function createFiberFromTypeAndProps(type, key, pendingProps) {
+  let fiberTag;
+  // The resolved type is set if we know what the final type will be. I.e. it's not lazy.
+  if (typeof type === 'function') {
+    if (shouldConstruct(type)) {
+      fiberTag = ClassComponent;
+    }
+  } else if (typeof type === 'string') {
+    fiberTag = HostComponent;
+  }
+
+  const fiber = createFiber(fiberTag, pendingProps, key, mode);
+  fiber.type = type;
+
+  return fiber;
+}

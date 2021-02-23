@@ -6,7 +6,7 @@ const debug = _.curry((tag, name) => console.log(`${tag}: ${name}`));
 const compose2 = (f, g) => args => f(g(args));
 
 // 支持传入多个函数
-const compose = (...fns) => {
+let compose = (...fns) => {
   return args => {
     let i = fns.length - 1;
     let result = fns[i](args);
@@ -15,6 +15,11 @@ const compose = (...fns) => {
     }
     return result;
   };
+};
+// 使用reduce
+compose = (...fns) => (...args) => {
+  const arr = fns.reverse();
+  return arr.slice(1).reduce((acc, fn) => fn(acc), arr[0].apply(this, [...args]));
 };
 
 const add2 = a => a + 2;

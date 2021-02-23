@@ -3,7 +3,7 @@ const curry2 = fn => a => b => fn(a, b);
 const add2 = (a, b) => a + b;
 curry2(add2)(1)(2);
 
-// 接受多个参数
+// 🚗接受多个参数
 function curry(fn) {
   const arity = fn.length;
   return function fn1(...args) {

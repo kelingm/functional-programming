@@ -169,9 +169,21 @@ const fn = myAsync(function* () {
   try {
     const a = yield delay(1000);
     const b = yield 2;
-    console.log({ a, b });
-    yield Promise.reject('error');
+    return { a, b };
+    // yield Promise.reject('error');
   } catch (error) {
     console.error(error);
   }
 });
+
+async function f() {
+  console.log(a);
+}
+
+try {
+  await f();
+} catch (e) {
+  console.log(11, e);
+}
+
+let f = Promise.reject(3);

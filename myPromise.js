@@ -50,12 +50,15 @@ class MyPromise {
     const getCallback = callback => {
       return value => {
         const result = callback(value);
-        if (result instanceof MyPromise) {
+        // Promise.resolve(3).then(res=>Promise.resolve(res))
+        if (
+          result instanceof MyPromise ||
+          (result instanceof Object && result !== null && result.then instanceof Function)
+        ) {
           result.then(
             res => resolve(res),
             err => reject(err),
           );
-        } else {
           resolve(result);
         }
       };

@@ -11,18 +11,31 @@ function delay(time) {
 }
 
 async function logInOrder(times) {
-  const textPromises = times.map(async time => {
-    const response = await delay(time);
-    return response;
-  });
-
+  const textPromises = times.map(time => delay(time));
+  const result = [];
   // 按次序输出
-  // for await (const textPromise of textPromises) {
-  //   // 异步generator
-  //   console.log(textPromise);
-  // }
+  for await (const textPromise of textPromises) {
+    // 异步generator
+    console.log(textPromise);
+    result.push(textPromise);
+  }
+  console.log({ result });
 }
 logInOrder([800, 200, 500, 1000]);
+
+async function f1() {
+  const result = [];
+  const p = [delay(200), delay(100)];
+  // 按次序输出
+  try {
+    for await (const res of p) {
+      result.push(res);
+    }
+  } catch (e) {
+    result.push(e);
+  }
+  console.log(result);
+}
 
 function logInOrder(times) {
   const ge = function* generator() {
@@ -80,45 +93,6 @@ class Request {
   }
 }
 
-// 并行请求
-function delay(time) {
-  console.log('start delay', time);
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      console.log('end delay', time);
-      resolve(time);
-    }, time);
-  });
-}
-
-async function logInOrder(times) {
-  const textPromises = times.map(time => delay(time));
-  console.log({ textPromises });
-  // 按次序输出
-  for await (const textPromise of textPromises) {
-    // 异步generator
-    console.log(textPromise);
-  }
-}
-
-async function f() {
-  const result = await Promise.all([delay(200), delay(100)]);
-  console.log({ result });
-}
-
-async function f1() {
-  const result = [];
-  const p = [delay(200), delay(100)];
-  // 按次序输出
-  try {
-    for await (const res of p) {
-      result.push(res);
-    }
-  } catch (e) {
-    result.push(e);
-  }
-  console.log(result);
-}
 
 // async是Generator 函数的语法糖, Generator 函数的执行必须靠执行器, async内置了执行器。
 // async函数的实现原理就是基于promise，将 Generator 函数和自动执行器，包装在一个函数里。
@@ -176,14 +150,22 @@ const fn = myAsync(function* () {
   }
 });
 
-async function f() {
-  console.log(a);
-}
 
-try {
-  await f();
-} catch (e) {
-  console.log(11, e);
-}
+let arr = [1,2,3]
+new Proxy(arr, {
+  get(target, prop, receiver) {
+    if (prop<0) {
+      Reflect.get(target, prop+target.length, receiver)
+    } else {
+      Reflect.get(target, prop, receiver)
+    }
+  }
+})
 
-let f = Promise.reject(3);
+fn.apply(this, args)
+Function.prototype.apply = function(context, args) {
+  const obj = context || window
+  obj.fn = this;
+  obj.fn(...args)
+  delete obj.fn
+}

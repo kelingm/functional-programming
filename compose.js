@@ -17,10 +17,13 @@ let compose = (...fns) => {
   };
 };
 // 使用reduce
+compose = (...fns) => args => {
+  return fns.reduceRight((acc, fn) =>  fn(acc), args)
+}
+// 支持多参数
 compose = (...fns) => (...args) => {
-  const arr = fns.reverse();
-  return arr.slice(1).reduce((acc, fn) => fn(acc), arr[0].apply(this, [...args]));
-};
+  return fns.slice(0,-1).reduceRight((acc, fn) => fn(acc), fns[fns.length-1].apply(this, args))
+}
 
 const add2 = a => a + 2;
 const multy3 = a => a * 3;

@@ -1,5 +1,5 @@
 function isInteger(num) {
-  return typeof num === 'number' && isFinite(Infinity) && Math.round(num) === num;
+  return typeof num === 'number' && isFinite(num) && Math.round(num) === num;
 }
 // isNaN
 // isFinite

@@ -31,40 +31,33 @@ class MyPromise {
   }
   then(onFulfilled, onRejected) {
     if (this.status === PENDING) {
-      // 返回promise支持链式调用
+      // 返回promise支持链式调用, resolve onFulfilled的执行结果
       return new MyPromise((resolve, reject) => {
-        this._handleCallbacks({
-          onFulfilled,
-          onRejected,
-          resolve,
-          reject,
-        });
+        const getCallback = callback => {
+          return value => {
+            const result = callback(value);
+            // Promise.resolve(3).then(res=>Promise.resolve(res))
+            if (
+              result instanceof MyPromise ||
+              (result instanceof Object && result !== null && result.then instanceof Function)
+            ) {
+              result.then(
+                res => resolve(res),
+                err => reject(err),
+              );
+            } else {
+              resolve(result);
+            }
+          };
+        };
+        this._onFulfilledCallbacks.push(getCallback(onFulfilled));
+        this._onRejectedCallbacks.push(getCallback(onRejected));
       });
     } else if (this.status === FULFILLED) {
       onFulfilled(this.value);
     } else {
       onRejected(this.value);
     }
-  }
-  _handleCallbacks({ onFulfilled, onRejected, resolve, reject }) {
-    const getCallback = callback => {
-      return value => {
-        const result = callback(value);
-        // Promise.resolve(3).then(res=>Promise.resolve(res))
-        if (
-          result instanceof MyPromise ||
-          (result instanceof Object && result !== null && result.then instanceof Function)
-        ) {
-          result.then(
-            res => resolve(res),
-            err => reject(err),
-          );
-          resolve(result);
-        }
-      };
-    };
-    this._onFulfilledCallbacks.push(getCallback(onFulfilled));
-    this._onRejectedCallbacks.push(getCallback(onRejected));
   }
   finally(onFinally) {
     this._onFulfilledCallbacks.push(onFinally);
